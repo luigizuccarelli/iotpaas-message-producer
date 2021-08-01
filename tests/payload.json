@@ -1,0 +1,19 @@
+{
+  "name": "iot-paas",
+  "patientid": "1234567",
+  "deviceId":"id123444",
+  "data": 
+      {
+         "hr":123.00,
+         "bp":"120/80",
+         "spo2":96.0,
+         "custom":[
+            {
+               "field":123,
+               "another-field":345,
+               "etc":123
+            }
+         ],
+         "date": "25-10-2021"
+      }
+}
