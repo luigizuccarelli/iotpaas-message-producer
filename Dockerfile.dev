@@ -1,0 +1,20 @@
+FROM quay.io/luigizuccarelli/ubi-base-builder:1.16.6 as build
+
+LABEL maintainer="luigizuccarelli@gmail.com"
+
+COPY go.mod go.sum /go/
+COPY cmd/ /go/cmd/
+COPY pkg/ /go/pkg/
+WORKDIR /go/
+RUN GO111MODULE=on go build -o build -tags real ./... 
+
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest 
+COPY uid_entrypoint.sh .
+COPY --from=build /go/build/microservice .
+
+USER 1001
+
+ENTRYPOINT [ "./uid_entrypoint.sh" ]
+
+# This will change depending on each microservice entry point
+CMD ["./microservice"]

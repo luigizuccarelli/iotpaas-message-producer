@@ -7,10 +7,42 @@ import (
 	"github.com/luigizuccarelli/iotpaas-message-producer/pkg/connectors"
 	"github.com/luigizuccarelli/iotpaas-message-producer/pkg/handlers"
 	"github.com/luigizuccarelli/iotpaas-message-producer/pkg/validator"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gorilla/mux"
 	"github.com/microlib/simple"
 )
+
+const (
+	CONTENTTYPE     string = "Content-Type"
+	APPLICATIONJSON string = "application/json"
+)
+
+var (
+	logger       *simple.Logger
+	httpDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "iotpaas_message_producer_http_duration_seconds",
+		Help: "Duration of HTTP requests.",
+	}, []string{"path"})
+)
+
+// prometheusMiddleware implements mux.MiddlewareFunc.
+func prometheusMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(CONTENTTYPE, APPLICATIONJSON)
+		// use this for cors
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept-Language")
+		route := mux.CurrentRoute(r)
+		path, _ := route.GetPathTemplate()
+		timer := prometheus.NewTimer(httpDuration.WithLabelValues(path))
+		next.ServeHTTP(w, r)
+		timer.ObserveDuration()
+	})
+}
 
 // startHttpServer a utility function that sets the routes, handlers and starts the http server
 func startHttpServer(conn connectors.Clients) *http.Server {
@@ -20,6 +52,10 @@ func startHttpServer(conn connectors.Clients) *http.Server {
 
 	// set the router and endpoints
 	r := mux.NewRouter()
+
+	r.Use(prometheusMiddleware)
+	r.Path("/metrics").Handler(promhttp.Handler())
+
 	r.HandleFunc("/api/v1/streamdata", func(w http.ResponseWriter, req *http.Request) {
 		handlers.StreamHandler(w, req, conn)
 	}).Methods("POST", "OPTIONS")

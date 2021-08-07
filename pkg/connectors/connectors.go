@@ -1,10 +1,12 @@
 package connectors
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/luigizuccarelli/iotpaas-message-producer/pkg/schema"
 	"github.com/microlib/simple"
 )
 
@@ -53,8 +55,20 @@ func (conn *Connectors) SendMessageSync(b []byte) error {
 	}()
 
 	topic := os.Getenv("TOPIC")
-	err := conn.Producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, Value: b}, nil)
+	//err := conn.Producer.Produce(&kafka.Message{
+	//TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, Value: b}, nil)
+	var data *schema.IOTPaaS
+
+	err := json.Unmarshal(b, &data)
+	if err != nil {
+		return err
+	}
+	err = conn.Producer.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic},
+		Key:            []byte(data.Id),
+		Value:          b,
+	}, nil)
+
 	return err
 }
 

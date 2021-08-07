@@ -6,3 +6,7 @@ type Response struct {
 	Status     string `json:"status"`
 	Message    string `json:"message"`
 }
+
+type IOTPaaS struct {
+	Id string `json:"Id"`
+}
