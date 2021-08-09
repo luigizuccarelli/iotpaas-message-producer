@@ -14,6 +14,10 @@ $ make build
 ## Container build
 
 ```bash
+# first build the base ubi build image (use golang version as tag)
+$ podman build -t quay.io/<your-id>/ubi-base-builder:1.16.6 
+$ podman push quay.io/<your-id>/ubu-base-builder:1.16.6
+
 # version of golang as a tag
 make container
 
@@ -22,6 +26,7 @@ make container
 
 ```bash
 # version of golang as a tag
+# use AUTH to set authfile if needed i.e (export AUTH=--authfile=/home/<user>/.docker/config.json)
 make push
 
 ```

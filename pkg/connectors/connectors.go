@@ -38,38 +38,28 @@ func NewClientConnectors(logger *simple.Logger) Clients {
 }
 
 func (conn *Connectors) SendMessageSync(b []byte) error {
-	// We are not setting a message key, which means that all messages will
-	// be distributed randomly over the different partitions.
-	// Delivery report handler for produced messages
-	go func() {
-		for e := range conn.Producer.Events() {
-			switch ev := e.(type) {
-			case *kafka.Message:
-				if ev.TopicPartition.Error != nil {
-					conn.Error(fmt.Sprintf("Delivery failed message to %v", ev.TopicPartition))
-				} else {
-					conn.Info(fmt.Sprintf("Delivered message to %v", ev.TopicPartition))
-				}
-			}
-		}
-	}()
 
 	topic := os.Getenv("TOPIC")
-	//err := conn.Producer.Produce(&kafka.Message{
-	//TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, Value: b}, nil)
 	var data *schema.IOTPaaS
 
 	err := json.Unmarshal(b, &data)
 	if err != nil {
 		return err
 	}
-	err = conn.Producer.Produce(&kafka.Message{
+
+	conn.Producer.Produce(&kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &topic},
 		Key:            []byte(data.Id),
 		Value:          b,
 	}, nil)
 
-	return err
+	e := <-conn.Producer.Events()
+	msg := e.(*kafka.Message)
+	if msg.TopicPartition.Error != nil {
+		return msg.TopicPartition.Error
+	}
+
+	return nil
 }
 
 func (conn *Connectors) Close() {
